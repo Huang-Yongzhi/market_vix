@@ -38,6 +38,8 @@ def safe_download(tickers, period="3d", interval="5m"):
                 period=period,
                 progress=False,
                 threads=False,
+                show_errors=False,
+                auto_adjust=False,
                 timeout=10,
             )
             if not df.empty:
@@ -76,15 +78,24 @@ def fetch_next_etf(period="3d", interval="5m"):
     """Download one ETF in rotation and store last price."""
     global price_df
     etf = next(cycle_iter)
-    df = safe_download(etf, period=period, interval=interval)
-    close = (
-        df["Close"][etf].iloc[-1]
-        if isinstance(df.columns, pd.MultiIndex)
-        else df["Close"].iloc[-1]
-    )
-    now = pd.Timestamp.now(tz=df.index.tz)
+    try:
+        df = safe_download(etf, period=period, interval=interval)
+        close = (
+            df["Close"][etf].iloc[-1]
+            if isinstance(df.columns, pd.MultiIndex)
+            else df["Close"].iloc[-1]
+        )
+    except RuntimeError:
+        cache = pathlib.Path(__file__).resolve().parent / "data" / "etf_cache.parquet"
+        if cache.exists():
+            cached = pd.read_parquet(cache)
+            close = cached[etf].iloc[-1]
+        else:
+            return
+    now = pd.Timestamp.now()
     price_df.loc[now, etf] = close
-    price_df = price_df.last("200T")
+    cutoff = now - pd.Timedelta(minutes=200)
+    price_df = price_df.loc[price_df.index >= cutoff]
 
 
 def get_price_frame(period="3d", interval="5m"):
