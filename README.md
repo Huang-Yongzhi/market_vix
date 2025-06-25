@@ -4,8 +4,15 @@
 
 First clone the repository:
 
+
+
+Then install dependencies:
+
+
 ```bash
-git clone https://github.com/yourname/market_vix.git
+
+git clone https://github.com/Huang-Yongzhi/market_vix.git
+
 cd market_vix
 ```
 
@@ -14,6 +21,29 @@ Then install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Windows 环境快速入门
+
+### 方案 A – CMD / PowerShell
+```bat
+:: 1. 进入项目目录
+cd C:\path\to\market_vix
+
+:: 2. 创建虚拟环境
+python -m venv venv
+
+:: 3. 激活
+venv\Scripts\activate.bat   :: CMD
+venv\Scripts\Activate.ps1   :: PowerShell
+
+:: 4. 安装依赖
+pip install -r requirements.txt
+
+:: 5. 运行 / 测试
+pytest -q
+python app.py
+```
+
 
 ## Windows 环境快速入门
 
