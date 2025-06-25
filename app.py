@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 import os, certifi
 
 
-from fetch_data import get_prices, get_vix_front, calc_slope
+from fetch_data import get_price_frame, get_vix_front, calc_slope
 
 ALARM_HISTORY = []
 
@@ -28,23 +28,14 @@ app.layout = html.Div([
     Input("timer", "n_intervals"),
 )
 def update(_):
-    prices = get_prices(period="3d", interval="5m")
-    if isinstance(prices.columns, pd.MultiIndex):
-        qqq = prices["Close"]["QQQ"]
-        vixy = prices["Close"]["VIXY"]
-        vixm = prices["Close"]["VIXM"]
-    else:
-        qqq = prices["QQQ"]
-        vixy = prices["VIXY"]
-        vixm = prices["VIXM"]
+    prices = get_price_frame(period="3d", interval="5m")
     v1 = get_vix_front()[0]
     slope = calc_slope()
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=qqq.index, y=qqq, name="QQQ"))
-    fig.add_trace(go.Scatter(x=vixy.index, y=vixy, name="VIXY"))
-    fig.add_trace(go.Scatter(x=vixm.index, y=vixm, name="VIXM"))
-    fig.add_trace(go.Scatter(x=qqq.index, y=[v1] * len(qqq), name="VIX_front"))
+    for col in prices.columns:
+        fig.add_trace(go.Scatter(x=prices.index, y=prices[col], name=col))
+    fig.add_trace(go.Scatter(x=prices.index, y=[v1] * len(prices), name="VIX_front"))
 
     now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     if slope >= 0.05:
