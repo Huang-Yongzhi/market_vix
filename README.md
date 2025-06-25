@@ -5,7 +5,7 @@
 First clone the repository:
 
 ```bash
-git clone [https://github.com/yourname/market_vix.git](https://github.com/Huang-Yongzhi/market_vix.git)
+git clone https://github.com/Huang-Yongzhi/market_vix.git
 cd market_vix
 ```
 
