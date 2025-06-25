@@ -1,7 +1,5 @@
- # 依赖清单
-pandas==2.2.2
-requests==2.31.0
-pytest==8.2.1
-dash==2.13.0
-yfinance==0.2.25
-plotly==5.15.0
+pandas
+yfinance
+dash
+plotly
+pytest
