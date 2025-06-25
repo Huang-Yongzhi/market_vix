@@ -39,6 +39,7 @@ def safe_download(tickers, period="3d", interval="5m"):
                 progress=False,
                 threads=False,
                 auto_adjust=False,
+
                 timeout=10,
             )
             if not df.empty:
@@ -77,6 +78,7 @@ def fetch_next_etf(period="3d", interval="5m"):
     """Download one ETF in rotation and store last price."""
     global price_df
     etf = next(cycle_iter)
+
     try:
         df = safe_download(etf, period=period, interval=interval)
         close = (
@@ -95,6 +97,7 @@ def fetch_next_etf(period="3d", interval="5m"):
     price_df.loc[now, etf] = close
     cutoff = now - pd.Timedelta(minutes=200)
     price_df = price_df.loc[price_df.index >= cutoff]
+
 
 
 def get_price_frame(period="3d", interval="5m"):
