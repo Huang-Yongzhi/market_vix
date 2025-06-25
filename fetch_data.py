@@ -7,13 +7,22 @@ import requests
 import yfinance as yf
 
 
-def get_prices():
-    """Fetch recent 2 hour 1m prices for QQQ, VIXY and VIXM."""
+
+def get_prices(period="3d", interval="5m"):
+    """Fetch price data for QQQ, VIXY and VIXM."""
+
     tickers = ["QQQ", "VIXY", "VIXM"]
     df = None
     for _ in range(3):
-        try:
-            df = yf.download(tickers, interval="1m", period="120m", progress=False, threads=False)
+        try:          
+            df = yf.download(
+                tickers,
+                interval=interval,
+                period=period,
+                progress=False,
+                threads=False,
+            )
+
             if not df.empty:
                 break
         except Exception:
