@@ -39,7 +39,6 @@ def safe_download(tickers, period="3d", interval="5m"):
                 progress=False,
                 threads=False,
                 auto_adjust=False,
-
                 timeout=10,
             )
             if not df.empty:
