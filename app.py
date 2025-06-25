@@ -1,66 +1,66 @@
-import dash
-from dash import html, dcc, Output, Input
-import plotly.graph_objs as go
 import pandas as pd
-import yfinance as yf
-from fetch_vix import fetch_vix_front
-import datetime
+import dash
+from dash import html, dcc
+from dash.dependencies import Output, Input
+import plotly.graph_objs as go
+import os, certifi
 
-# 阈值
-SLOPE_WARN = 0.03
-SLOPE_DANGER = 0.05
+
+from fetch_data import get_prices, get_vix_front, calc_slope
+
+ALARM_HISTORY = []
+
 
 app = dash.Dash(__name__)
 app.layout = html.Div([
-    html.H2("实时市场风险仪表盘"),
-    # 报警牌
-    html.Div(id="alert-box", style={"font-size":"24px", "margin":"10px"}),
-    # 折线图
-    dcc.Graph(id="live-chart"),
-    # 每10秒刷新一次
-    dcc.Interval(id="interval", interval=10_000, n_intervals=0)
+    html.H2("Market Dashboard"),
+    dcc.Graph(id="live"),
+    html.Div(id="alert", style={"fontSize": "24px"}),
+    html.Ul(id="log"),
+    dcc.Interval(id="timer", interval=10000, n_intervals=0),
 ])
 
+
 @app.callback(
-    Output("live-chart", "figure"),
-    Output("alert-box", "children"),
-    Input("interval", "n_intervals")
+    Output("live", "figure"),
+    Output("alert", "children"),
+    Output("log", "children"),
+    Input("timer", "n_intervals"),
 )
-def update_dashboard(n):
-    # 1) 抓 VIX 数据
-    df_vix = fetch_vix_front()
-    # 前 3 行：当月、下月、次下月
-    vix1, vix2, vix3 = df_vix["settle"].iloc[:3]
-    slope = (vix1 - vix3) / vix3
-
-    # 2) 抓 VIXY/VIXM ETF 价格
-    etf = yf.download(["VIXY","VIXM","QQQ"], period="1d", interval="1m")
-    # last prices
-    p_qqq = etf["Close"]["QQQ"].iloc[-1]
-    p_vixy = etf["Close"]["VIXY"].iloc[-1]
-    p_vixm = etf["Close"]["VIXM"].iloc[-1]
-
-    # 3) 组织折线数据
-    now = datetime.datetime.now()
-    x = [now] * 4
-    df = pd.DataFrame({
-        "Instrument": ["VIX Front","VIXY","VIXM","QQQ"],
-        "Price": [vix1, p_vixy, p_vixm, p_qqq]
-    })
+def update(_):
+    prices = get_prices(period="3d", interval="5m")
+    if isinstance(prices.columns, pd.MultiIndex):
+        qqq = prices["Close"]["QQQ"]
+        vixy = prices["Close"]["VIXY"]
+        vixm = prices["Close"]["VIXM"]
+    else:
+        qqq = prices["QQQ"]
+        vixy = prices["VIXY"]
+        vixm = prices["VIXM"]
+    v1 = get_vix_front()[0]
+    slope = calc_slope()
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=df["Instrument"], y=df["Price"]))
-    fig.update_layout(title=f"实时价格 ({now.strftime('%H:%M:%S')})")
+    fig.add_trace(go.Scatter(x=qqq.index, y=qqq, name="QQQ"))
+    fig.add_trace(go.Scatter(x=vixy.index, y=vixy, name="VIXY"))
+    fig.add_trace(go.Scatter(x=vixm.index, y=vixm, name="VIXM"))
+    fig.add_trace(go.Scatter(x=qqq.index, y=[v1] * len(qqq), name="VIX_front"))
 
-    # 4) 报警逻辑
-    if slope >= SLOPE_DANGER:
-        alert = f"⚠️ Slope={slope:.3f} ≥ {SLOPE_DANGER}: 高风险"
-    elif slope >= SLOPE_WARN:
-        alert = f"⚠ Slope={slope:.3f} ≥ {SLOPE_WARN}: 注意风险"
+    now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+    if slope >= 0.05:
+        alert = html.Span("高风险", style={"color": "red"})
+        ALARM_HISTORY.insert(0, f"{now} {slope}")
+        with open("alarm.log", "a", encoding="utf-8") as f:
+            f.write(f"{now} slope={slope}\n")
+    elif slope >= 0.03:
+        alert = html.Span("警戒", style={"color": "yellow"})
+        ALARM_HISTORY.insert(0, f"{now} {slope}")
     else:
-        alert = f"✅ Slope={slope:.3f} 正常"
+        alert = html.Span("正常", style={"color": "green"})
 
-    return fig, alert
+    items = [html.Li(entry) for entry in ALARM_HISTORY[:5]]
+    return fig, alert, items
+
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050)
+    app.run(debug=True, port=8050)
